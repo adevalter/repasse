@@ -26,18 +26,20 @@ public class Empresa {
     private String razao;
 
     private String fantasia;
-    
+
     private String email;
+
+    private String document;
     
     private String celular;
     
     private int status;
     
     @CreationTimestamp
-    @Column(nullable = false, name = "created_at", columnDefinition = "dateTime")
+    @Column(name = "created_at", columnDefinition = "dateTime")
     private LocalDateTime createdAt;
     @UpdateTimestamp
-    @Column(nullable = false, name = "updated_at", columnDefinition = "dateTime")
+    @Column(name = "updated_at", columnDefinition = "dateTime")
     private LocalDateTime updateAt;
 
 
