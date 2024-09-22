@@ -3,7 +3,6 @@ package br.com.adeweb.repasse.data.controllers;
 import br.com.adeweb.repasse.data.models.EmpresaDTO;
 import br.com.adeweb.repasse.domain.entities.Empresa;
 import br.com.adeweb.repasse.domain.services.EmpresaService;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
