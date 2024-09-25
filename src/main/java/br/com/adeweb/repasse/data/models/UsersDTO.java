@@ -8,14 +8,11 @@ import java.time.LocalDateTime;
 @Data
 public class UsersDTO {
     private Long id;
-    private String firstName;
-    private String lastName;
+    private String fullName;
     private String email;
     private String password;
     private String forget;
-    private String document;
-    private String celular;
-    private StatusUsers status;
+    private int status;
     private Empresa empresa;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
