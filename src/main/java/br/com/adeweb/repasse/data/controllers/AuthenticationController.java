@@ -2,7 +2,7 @@ package br.com.adeweb.repasse.data.controllers;
 
 import br.com.adeweb.repasse.data.models.AuthenticationDTO;
 import br.com.adeweb.repasse.data.models.AuthenticationResponse;
-import br.com.adeweb.repasse.data.models.UsersDTO;
+import br.com.adeweb.repasse.data.models.UserDTO;
 import br.com.adeweb.repasse.domain.entities.User;
 import br.com.adeweb.repasse.domain.services.TokenService;
 import br.com.adeweb.repasse.domain.services.UsersService;
@@ -43,9 +43,9 @@ public class AuthenticationController {
 
     @PostMapping("/add")
     @ResponseStatus(HttpStatus.CREATED)
-    public UsersDTO addUsers(@RequestBody UsersDTO usersDTO){
+    public UserDTO addUsers(@RequestBody User user){
 
-        return usersService.salvar(usersDTO);
+        return usersService.salvar(user);
     }
 }
 

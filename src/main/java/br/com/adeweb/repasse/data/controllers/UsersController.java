@@ -1,7 +1,7 @@
 package br.com.adeweb.repasse.data.controllers;
 
-import br.com.adeweb.repasse.data.models.EmpresaDTO;
-import br.com.adeweb.repasse.data.models.UsersDTO;
+import br.com.adeweb.repasse.data.models.UserDTO;
+import br.com.adeweb.repasse.domain.entities.User;
 import br.com.adeweb.repasse.domain.services.UsersService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ public class UsersController {
     @Autowired
     private UsersService usersService;
     @GetMapping
-    public ResponseEntity<Page<UsersDTO>> getAllUsers(
+    public ResponseEntity<Page<UserDTO>> getAllUsers(
         @RequestParam(defaultValue = "0") final Integer pageNumber,
         @RequestParam(defaultValue = "10") final Integer size
     ){
@@ -26,23 +26,23 @@ public class UsersController {
     }
 
     @GetMapping("/{id}")
-    public UsersDTO buscaPorIdUsers(@PathVariable Long id){
+    public UserDTO buscaPorIdUsers(@PathVariable Long id){
         return usersService.buscaPorId(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UsersDTO addUsers(@RequestBody UsersDTO usersDTO){
-        return usersService.salvar(usersDTO);
+    public UserDTO addUsers(@RequestBody User user){
+        return usersService.salvar(user);
     }
 
-    @PutMapping("/{id}")
-    public  UsersDTO updateUsers(@PathVariable Long id, @RequestBody UsersDTO users){
-        UsersDTO  usersAtual = usersService.buscaPorId(id);
+    /*@PutMapping("/{id}")
+    public UserDTO updateUsers(@PathVariable Long id, @RequestBody User users){
+        User usersAtual = usersService.buscaPorId(id);
         users.setCreatedAt(usersAtual.getCreatedAt());
         users.setUpdatedAt(usersAtual.getUpdatedAt());
         BeanUtils.copyProperties(users, usersAtual, "id");
         return usersService.salvar(usersAtual);
     }
-
+*/
 }
