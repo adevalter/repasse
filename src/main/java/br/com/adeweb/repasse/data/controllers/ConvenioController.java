@@ -30,6 +30,7 @@ public class ConvenioController {
     public ConvenioDTO byId(@PathVariable Long id){
         return convenioService.buscarPorId(id);
     }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ConvenioDTO save(@RequestBody ConvenioDTO convenioDTO){

@@ -1,6 +1,5 @@
 package br.com.adeweb.repasse.domain.services;
 
-import br.com.adeweb.repasse.data.models.ConvenioDTO;
 import br.com.adeweb.repasse.data.models.ProcedimentoDTO;
 import br.com.adeweb.repasse.domain.entities.Procedimento;
 import br.com.adeweb.repasse.domain.repositories.ProcedimentoRepository;
@@ -9,8 +8,10 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
-public class ProdecimentoService {
+@Service
+public class ProcecimentoService {
     @Autowired
     ProcedimentoRepository procedimentoRepository;
 
