@@ -2,6 +2,7 @@ package br.com.adeweb.repasse.domain.entities;
 
 import br.com.adeweb.repasse.domain.enums.StatusUsers;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -36,6 +37,7 @@ public class User implements UserDetails  {
     private Integer status;
     @ManyToOne
     @JoinColumn(name = "empresa_id", nullable = false)
+    @JsonIgnoreProperties("user")
     private Empresa empresa;
 
     @CreationTimestamp

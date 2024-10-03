@@ -11,20 +11,39 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
-@Table(name = "convenio")
 @Data
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-public class Convenio {
+public class Pessoa {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(nullable = false)
     private Long id;
 
-    private String descricao;
-
+    private String nome;
+    private String documento;
+    private String obs;
     private int status;
+    @ManyToOne
+    @JsonIgnoreProperties("pessoa")
+    @JoinColumn(name = "user_id")
+    User user;
+    @ManyToOne
+    @JsonIgnoreProperties("pessoa")
+    @JoinColumn(name = "empresa_id")
+    Empresa empresa;
+    @ManyToOne
+    @JsonIgnoreProperties("pessoa")
+    @JoinColumn(name = "convenio_id")
+    Convenio convenio;
+
+    @ManyToOne
+    @JsonIgnoreProperties("pessoa")
+    @JoinColumn(name = "tipoPessoa_id")
+    TipoPessoa tipoPessoa;
+
+
     @CreationTimestamp
     @Column(updatable = false, name="created_at", columnDefinition = "dateTime")
     private LocalDateTime createdAd;
@@ -34,13 +53,4 @@ public class Convenio {
     @Column(name="updated_at", columnDefinition = "dateTime")
     private LocalDateTime updatedAt;
 
-    @ManyToOne
-    @JoinColumn(name="user_id")
-    @JsonIgnoreProperties("convenio")
-    private User user;
-
-    @ManyToOne
-    @JoinColumn(name= "empresa_id",nullable = false)
-    @JsonIgnoreProperties("convenio")
-    private Empresa empresa;
 }

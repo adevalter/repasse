@@ -2,7 +2,7 @@ CREATE TABLE `pessoa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned DEFAULT NULL,
   `empresa_id` bigint unsigned DEFAULT NULL,
-  `tipoPessoa_id` bigint unsigned DEFAULT NULL,
+  `tipo_pessoa_id` bigint unsigned DEFAULT NULL,
   `convenio_id` bigint unsigned DEFAULT NULL,
   `nome` varchar(255) NOT NULL DEFAULT '',
   `documento` varchar(50) DEFAULT NULL,
@@ -12,11 +12,11 @@ CREATE TABLE `pessoa` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `pessoa_user_id` (`user_id`),
-  KEY `pessoa_tipopessoa_id` (`tipoPessoa_id`),
+  KEY `pessoa_tipopessoa_id` (`tipo_pessoa_id`),
   KEY `pessoa_convenio_id` (`convenio_id`),
   KEY `pessoa_empresa_id` (`empresa_id`),
   CONSTRAINT `pessoa_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `pessoa_tipoPessoa_id` FOREIGN KEY (`tipopessoa_id`) REFERENCES `tipopessoa` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `pessoa_tipo_essoa_id` FOREIGN KEY (`tipo_pessoa_id`) REFERENCES `tipo_pessoa` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `pessoa_convenio_id` FOREIGN KEY (`convenio_id`) REFERENCES `convenio` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `pessoa_empresa_id` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8;

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/procedimentos")
-public class Procedimento {
+public class ProcedimentoController {
     @Autowired
     private ProcecimentoService procecimentoService;
 

@@ -1,20 +1,23 @@
 package br.com.adeweb.repasse.domain.entities;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
 public class Empresa {
 
     @EqualsAndHashCode.Include
@@ -42,17 +45,24 @@ public class Empresa {
     @Column(name = "updated_at", columnDefinition = "dateTime")
     private LocalDateTime updateAt;
 
+    @OneToMany(mappedBy = "empresa")
+    @JsonIgnoreProperties("empresa")
+    private List<User> user;
+
+    @OneToMany(mappedBy = "empresa")
+
+    private List<Pessoa> pessoa;
+
+    @OneToMany(mappedBy = "empresa")
+    @JsonIgnoreProperties("empresa")
+    private List<TipoPessoa> tipoPessoa;
+
+    @OneToMany(mappedBy = "empresa")
+    private List<Procedimento> procedimento;
+
+    @OneToMany(mappedBy = "empresa")
+    private List<Convenio> convenio;
+
+
 
 }
-
-/*
- *  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `razao` varchar(255) NOT NULL DEFAULT '',
-  `fantasia` varchar(255) NOT NULL DEFAULT '',
-  `email` varchar(255) NOT NULL DEFAULT '',
-  `document` varchar(50) DEFAULT NULL,
-  `celular` varchar(20) DEFAULT NULL,
-  `status` varchar(50) NOT NULL DEFAULT 'registered' COMMENT 'registered, confirmed',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` 
- */
