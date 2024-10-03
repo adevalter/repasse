@@ -1,6 +1,7 @@
 package br.com.adeweb.repasse.domain.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -35,9 +36,11 @@ public class Convenio {
 
     @ManyToOne
     @JoinColumn(name="user_id")
+    @JsonIgnoreProperties("convenio")
     private User user;
 
     @ManyToOne
     @JoinColumn(name= "empresa_id",nullable = false)
+    @JsonIgnoreProperties("convenio")
     private Empresa empresa;
 }
