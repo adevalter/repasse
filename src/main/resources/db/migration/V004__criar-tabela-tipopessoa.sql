@@ -1,4 +1,4 @@
-CREATE TABLE `tipopessoa` (
+CREATE TABLE `tipo_pessoa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned DEFAULT NULL,
   `empresa_id` bigint unsigned DEFAULT NULL,
