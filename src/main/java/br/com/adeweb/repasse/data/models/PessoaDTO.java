@@ -15,8 +15,8 @@ public class PessoaDTO {
     private String obs;
     private int status;
 
-    UserResumoDTO user;
-    EmpresaResumoDTO empresa;
-    ConvenioResumoDTO convenio;
-    TipoPessoaResumoDTO tipoPessoa;
+   private UserResumoDTO user;
+   private EmpresaResumoDTO empresa;
+   private ConvenioResumoDTO convenio;
+   private TipoPessoaResumoDTO tipoPessoa;
 }
