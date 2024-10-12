@@ -45,23 +45,9 @@ public class Empresa {
     @Column(name = "updated_at", columnDefinition = "dateTime")
     private LocalDateTime updateAt;
 
-    @OneToMany(mappedBy = "empresa")
-    @JsonIgnoreProperties("empresa")
-    private List<User> user;
 
-    @OneToMany(mappedBy = "empresa")
 
-    private List<Pessoa> pessoa;
 
-    @OneToMany(mappedBy = "empresa")
-    @JsonIgnoreProperties("empresa")
-    private List<TipoPessoa> tipoPessoa;
-
-    @OneToMany(mappedBy = "empresa")
-    private List<Procedimento> procedimento;
-
-    @OneToMany(mappedBy = "empresa")
-    private List<Convenio> convenio;
 
 
 

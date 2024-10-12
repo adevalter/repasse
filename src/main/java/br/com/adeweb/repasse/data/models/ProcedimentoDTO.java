@@ -11,6 +11,6 @@ public class ProcedimentoDTO {
     private long id;
     private String descricao;
     private int status;
-    private UserDTO user;
-    private EmpresaDTO empresa;
+    private UserResumoDTO user;
+    private EmpresaResumoDTO empresa;
 }

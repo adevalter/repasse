@@ -1,7 +1,7 @@
 package br.com.adeweb.repasse.data.models;
 
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,10 +15,9 @@ public class PessoaDTO {
     private String documento;
     private String obs;
     private int status;
-    UserDTO user;
-    EmpresaDTO empresa;
-    ConvenioDTO convenio;
-    TipoPessoaDTO tipoPessoa;
 
-
+    UserResumoDTO user;
+    EmpresaResumoDTO empresa;
+    ConvenioResumoDTO convenio;
+    TipoPessoaResumoDTO tipoPessoa;
 }

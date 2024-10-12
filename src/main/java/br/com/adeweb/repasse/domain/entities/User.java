@@ -3,6 +3,7 @@ package br.com.adeweb.repasse.domain.entities;
 import br.com.adeweb.repasse.domain.enums.StatusUsers;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

@@ -1,7 +1,6 @@
 package br.com.adeweb.repasse.data.models;
-
-
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.Data;
 
 
@@ -11,9 +10,11 @@ import lombok.Data;
 public class TipoPessoaDTO {
     private Long id;
     private String descricao;
-    UserDTO user;
-    EmpresaDTO empresa;
     private int status;
+
+    private UserResumoDTO user;
+    private EmpresaResumoDTO empresa;
+
 
 
 }
