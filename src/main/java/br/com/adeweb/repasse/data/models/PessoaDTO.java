@@ -1,7 +1,6 @@
 package br.com.adeweb.repasse.data.models;
 
 
-import com.fasterxml.jackson.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
