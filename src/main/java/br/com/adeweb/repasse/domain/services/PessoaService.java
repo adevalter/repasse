@@ -18,13 +18,23 @@ public class PessoaService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public Page<PessoaDTO> findAll(Pageable pageable){
-        Page<Pessoa> pessoas = pessoaRepositoy.findAll(pageable);
+    public Page<PessoaDTO> findAllByTipoPessoa(Pageable pageable, Long id){
+        Page<Pessoa> pessoas = pessoaRepositoy.findByTipoPessoaId(pageable, id);
+        return pessoas.map(pessoa -> convertToDTO(pessoa));
+    }
+
+    public  Page<PessoaDTO> findByName(String nome, Long tipoPessoaId, Pageable pageable){
+        Page<Pessoa> pessoas = pessoaRepositoy.findByNome(nome, tipoPessoaId, pageable);
         return pessoas.map(pessoa -> convertToDTO(pessoa));
     }
 
     public PessoaDTO buscarPorId(Long id){
         Pessoa pessoa = pessoaRepositoy.findById(id).orElseThrow(EntityNotFoundException::new);
+        return convertToDTO(pessoa);
+    }
+
+    public PessoaDTO buscarMedicoPorId(Long id){
+        Pessoa pessoa = pessoaRepositoy.findMedicoById(id).orElseThrow(EntityNotFoundException::new);
         return convertToDTO(pessoa);
     }
 

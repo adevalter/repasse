@@ -23,6 +23,11 @@ public class ProcecimentoService {
         return procedimentos.map(procedimento -> convertToDto(procedimento));
     }
 
+    public Page<ProcedimentoDTO> findByDescricao(String descricao, Pageable pageable){
+        Page<Procedimento> procedimentos = procedimentoRepository.findByDescricao(descricao, pageable);
+        return procedimentos.map(procedimento -> convertToDto(procedimento));
+    }
+
     public ProcedimentoDTO buscaPorId(Long id){
         Procedimento procedimento = procedimentoRepository.findById(id).orElseThrow(EntityExistsException::new);
         return convertToDto(procedimento);

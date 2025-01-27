@@ -6,7 +6,7 @@ CREATE TABLE `pessoa` (
   `convenio_id` bigint unsigned DEFAULT NULL,
   `nome` varchar(255) NOT NULL DEFAULT '',
   `documento` varchar(50) DEFAULT NULL,
-  `obs` varchar(255) NOT NULL DEFAULT '',
+  `email` varchar(255) NOT NULL DEFAULT '',
   `status` int(11) NOT NULL DEFAULT '1',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

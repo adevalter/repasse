@@ -23,9 +23,16 @@ public class ConvenioService {
         return convenios.map(convenio -> convertToDto(convenio));
     }
 
+    public Page<ConvenioDTO> findByDescricao(String descricao, Pageable pageable){
+        Page<Convenio> convenios = convenioRepository.findByDescricao(descricao, pageable);
+        return  convenios.map(convenio -> convertToDto(convenio));
+    }
+
     public ConvenioDTO buscarPorId(Long id){
         Convenio convenio = convenioRepository.findById(id).orElseThrow(EntityExistsException::new);
         return convertToDto(convenio);
+
+
     }
 
     public ConvenioDTO salvarConvenio(ConvenioDTO convenioDTO){
@@ -44,6 +51,7 @@ public class ConvenioService {
 
 
     private ConvenioDTO convertToDto(Convenio convenio){
+
         return modelMapper.map(convenio, ConvenioDTO.class);
     }
 

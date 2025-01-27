@@ -3,10 +3,13 @@ package br.com.adeweb.repasse.data.controllers;
 import br.com.adeweb.repasse.data.models.ConvenioDTO;
 import br.com.adeweb.repasse.data.models.EmpresaDTO;
 import br.com.adeweb.repasse.domain.services.ConvenioService;
+import lombok.Builder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,15 @@ public class ConvenioController {
             @RequestParam(defaultValue = "10") final Integer size
     ){
         return ResponseEntity.ok(convenioService.findAll(PageRequest.of(pageNumber,size)));
+    }
+
+    @GetMapping("/pesquisar")
+    public ResponseEntity<Page<ConvenioDTO>> findByDescricao(
+            @RequestParam(required = false, defaultValue = "") String descricao,
+            @RequestParam(defaultValue = "0") final Integer pageNumber,
+            @RequestParam(defaultValue = "10") final Integer size
+    ){
+        return ResponseEntity.ok(convenioService.findByDescricao(descricao, PageRequest.of(pageNumber,size)));
     }
 
     @GetMapping("/{id}")

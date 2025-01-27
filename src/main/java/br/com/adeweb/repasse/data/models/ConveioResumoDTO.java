@@ -5,4 +5,5 @@ import lombok.Data;
 @Data
 public class ConveioResumoDTO {
     private Long id;
+    private String descricao;
 }

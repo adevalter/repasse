@@ -6,6 +6,7 @@ CREATE TABLE `pagamento`(
  `total` decimal(8,2) not null default 0,
  `banco_pagamento` varchar(255) default null,
  `data_deposito` datetime NULL DEFAULT null,
+  `status` int(11) NOT NULL DEFAULT '1',
  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  primary key (id),

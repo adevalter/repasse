@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  aw-mysql:
+    hostname: aw-mysql
+    image: mysql:latest
+    container_name: aw-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: magic2024view
+      MYSQL_DATABASE: awrepasse
+      MYSQL_USER: pontocom
+      MYSQL_PASSWORD: magic2020View
+    ports:
+      - "3306:3306"
+    networks:
+      - awmanager
+    volumes:
+      - /home/awdockervolume/mysql:/var/lib/mysql
+
+  repasse-api:
+    hostname: awrepasse-api
+    image: awrepasse-api
+    environment:
+      SRV_PORT: 9595
+      DATABASE_HOST: jdbc:mysql://aw-mysql:3306/awrepasse?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DATABASE_USER: pontocom
+      DATABASE_PASSWORD: magic2020View
+    ports:
+      - "9595:9595"
+    networks:
+      - awmanager
+    volumes:
+      - /home/awdockervolume/awrepasse:/uploads
+    depends_on:
+      - aw-mysql
+    restart: on-failure
+
+  repasse-front:
+    hostname: awrepasse-front
+    image: awrepasse-front
+    environment:
+      apiHost: http://62.171.186.45:9595
+      sizeApi: 10000
+    ports:
+      - "4200:80"
+    networks:
+      - awmanager
+    depends_on:
+      - aw-mysql
+      - repasse-api
+    restart: on-failure
+
+networks:
+  awmanager:
+      driver: bridge

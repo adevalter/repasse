@@ -10,4 +10,5 @@ public class ProcedimentoDTO {
     private int status;
     private UserResumoDTO user;
     private EmpresaResumoDTO empresa;
+
 }

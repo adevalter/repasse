@@ -23,23 +23,24 @@ public class Pessoa {
 
     private String nome;
     private String documento;
-    private String obs;
+    
+    private String email;
     private int status;
-    @ManyToOne
-    @JsonIgnoreProperties("pessoa")
-    @JoinColumn(name = "user_id")
-    User user;
-    @ManyToOne
-    @JsonIgnoreProperties("pessoa")
-    @JoinColumn(name = "empresa_id")
-    Empresa empresa;
-    @ManyToOne
-    @JsonIgnoreProperties("pessoa")
-    @JoinColumn(name = "convenio_id")
-    Convenio convenio;
 
     @ManyToOne
-    @JsonIgnoreProperties("pessoa")
+    @JoinColumn(name = "user_id")
+    User user;
+
+    @ManyToOne
+    @JoinColumn(name = "empresa_id")
+    Empresa empresa;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "convenio_id", nullable = true)
+    Convenio convenio;
+
+
+    @ManyToOne
     @JoinColumn(name = "tipoPessoa_id")
     TipoPessoa tipoPessoa;
 

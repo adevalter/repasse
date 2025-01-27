@@ -9,6 +9,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
 @Data
 @Entity
 @NoArgsConstructor
@@ -23,9 +25,7 @@ public class Repasse {
     @ManyToOne
     @JoinColumn(name = "medico_id")
     private Pessoa medico;
-    @ManyToOne
-    @JoinColumn(name="paciente_id")
-    private Pessoa pacitente;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
@@ -33,9 +33,13 @@ public class Repasse {
     @JoinColumn(name = "empresa_id")
     private Empresa empresa;
 
+    // Relacionamento um-para-muitos com RepasseItem
+    @OneToMany(mappedBy = "repasse", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<RepasseItem> repasseItems;
+
     @CreationTimestamp
     @Column(updatable = false, name="created_at", columnDefinition = "dateTime")
-    private LocalDateTime createdAd;
+    private LocalDateTime createdAt;
 
     @JsonIgnore
     @UpdateTimestamp

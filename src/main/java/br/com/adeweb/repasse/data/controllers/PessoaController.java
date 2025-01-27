@@ -19,15 +19,32 @@ public class PessoaController {
     @GetMapping
     public ResponseEntity<Page<PessoaDTO>> getAll(
             @RequestParam(defaultValue = "0") final Integer pagNumber,
-            @RequestParam(defaultValue = "10") final Integer size
+            @RequestParam(defaultValue = "10") final Integer size,
+            @RequestParam Long tp
     ){
-        return ResponseEntity.ok(pessoaService.findAll(PageRequest.of(pagNumber,size)));
+        return ResponseEntity.ok(pessoaService.findAllByTipoPessoa(PageRequest.of(pagNumber,size), tp));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/pesquisa")
+    public ResponseEntity<Page<PessoaDTO>> getByName(
+            @RequestParam(required = false, defaultValue = "") String nome,
+            @RequestParam(defaultValue = "1") Long tipoPessoa_id,
+            @RequestParam(defaultValue = "0") final Integer pagNumber,
+            @RequestParam(defaultValue = "10") final Integer size
+    ){
+        return ResponseEntity.ok(pessoaService.findByName(nome, tipoPessoa_id, PageRequest.of(pagNumber,size)));
+    }
+
+    @GetMapping("/paciente/{id}")
     public PessoaDTO byId(@PathVariable Long id){
         return pessoaService.buscarPorId(id);
     }
+
+    @GetMapping("/medico/{id}")
+        public PessoaDTO medicoById(@PathVariable Long id){
+        return pessoaService.buscarMedicoPorId(id);
+    }
+
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

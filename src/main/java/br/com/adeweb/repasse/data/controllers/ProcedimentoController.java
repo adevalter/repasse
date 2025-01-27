@@ -24,6 +24,15 @@ public class ProcedimentoController {
         return ResponseEntity.ok(procecimentoService.findAll(PageRequest.of(pageMNumber, size)));
     }
 
+    @GetMapping("/pesquisa")
+    public ResponseEntity<Page<ProcedimentoDTO>> findByName(
+            @RequestParam(required = false, defaultValue = "") String descricao,
+            @RequestParam(defaultValue = "0") final Integer pageMNumber,
+            @RequestParam(defaultValue = "10") final Integer size
+    ){
+        return ResponseEntity.ok(procecimentoService.findByDescricao(descricao, PageRequest.of(pageMNumber, size)));
+    }
+
     @GetMapping("/{id}")
     public ProcedimentoDTO getById(@PathVariable Long id){
         return procecimentoService.buscaPorId(id);

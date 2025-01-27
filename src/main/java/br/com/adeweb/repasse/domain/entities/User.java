@@ -35,6 +35,7 @@ public class User implements UserDetails  {
     @Column(nullable = false)
     private String password;
     private String forget;
+    private Integer permissao;
     private Integer status;
     @ManyToOne
     @JoinColumn(name = "empresa_id", nullable = false)
