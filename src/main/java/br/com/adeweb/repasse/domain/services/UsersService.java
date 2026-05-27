@@ -9,7 +9,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,12 +24,11 @@ public class UsersService {
         Page<User> users = userRepository.findAll(pageable);
         return users.map((user -> convertToDTO(user)));
     }
+
     public UserDTO buscaPorId(Long id){
         User user = userRepository.findById(id).orElseThrow(EntityExistsException::new);
         return convertToDTO(user);
     }
-
-
 
     public UserDTO salvar(User user){
 

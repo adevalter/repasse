@@ -20,7 +20,8 @@ public class ConvenioService {
 
     public Page<ConvenioDTO> findAll(Pageable pageable){
         Page<Convenio> convenios = convenioRepository.findAll(pageable);
-        return convenios.map(convenio -> convertToDto(convenio));
+        var retorno =  convenios.map(convenio -> convertToDto(convenio));
+        return retorno;
     }
 
     public Page<ConvenioDTO> findByDescricao(String descricao, Pageable pageable){

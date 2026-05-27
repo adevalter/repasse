@@ -1,8 +1,6 @@
 package br.com.adeweb.repasse.domain.services;
 
-import br.com.adeweb.repasse.data.models.PagamentoDTO;
 import br.com.adeweb.repasse.data.models.RepasseDTO;
-import br.com.adeweb.repasse.data.models.RepasseItemDTO;
 import br.com.adeweb.repasse.domain.entities.Pagamento;
 import br.com.adeweb.repasse.domain.entities.Repasse;
 import br.com.adeweb.repasse.domain.repositories.PagamentoRepository;
@@ -12,7 +10,9 @@ import jakarta.persistence.EntityExistsException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 
@@ -32,7 +32,12 @@ public class RepasseService {
     private ModelMapper modelMapper;
 
     public Page<RepasseDTO> findAll(Pageable pageable){
-        Page<Repasse> repasses = repasseRepository.findAll(pageable);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("id").descending()
+        );
+        Page<Repasse> repasses = repasseRepository.findAll(sortedPageable);
         return repasses.map(repasse -> convertToDto(repasse));
     }
 

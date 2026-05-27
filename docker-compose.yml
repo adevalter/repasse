@@ -20,11 +20,20 @@ services:
   repasse-api:
     hostname: awrepasse-api
     image: awrepasse-api
+    container_name: awrepasseapi
     environment:
       SRV_PORT: 9595
       DATABASE_HOST: jdbc:mysql://aw-mysql:3306/awrepasse?createDatabaseIfNotExist=true&serverTimezone=UTC
       DATABASE_USER: pontocom
       DATABASE_PASSWORD: magic2020View
+
+      SPRING_MAIL_HOST: smtplw.com.br
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: adeweb
+      SPRING_MAIL_PASSWORD: nRmuWYpc6083
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_TRANSPORT_PROTOCOL: smtp
     ports:
       - "9595:9595"
     networks:

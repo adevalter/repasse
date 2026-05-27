@@ -26,7 +26,7 @@ public class PagamentoService {
     private ModelMapper modelMapper;
 
     public Page<PagamentoDTO> findAll(Pageable pageable){
-        Page<Pagamento> pagamentos = pagamentoRepository.findAll(pageable);
+        Page<Pagamento> pagamentos = pagamentoRepository.findAllByStatusLessThanOrderByIdDesc(2,pageable);
         return pagamentos.map(pagamento -> convetToDto(pagamento));
     }
 

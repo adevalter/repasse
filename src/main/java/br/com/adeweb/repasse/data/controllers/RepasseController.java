@@ -1,6 +1,6 @@
 package br.com.adeweb.repasse.data.controllers;
 
-import br.com.adeweb.repasse.data.models.PagamentoDTO;
+
 import br.com.adeweb.repasse.data.models.RepasseDTO;
 import br.com.adeweb.repasse.domain.services.RepasseService;
 import org.springframework.beans.BeanUtils;

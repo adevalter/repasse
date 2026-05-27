@@ -10,7 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+@Table(name="repasse_item")
 @Data
 @Entity
 @NoArgsConstructor
@@ -20,7 +20,7 @@ public class RepasseItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(nullable = false)
     private Long id;
-
+    @Column(name="data_procedimento")
     private LocalDateTime dataProcedimento;
     private double valor;
     private int status;

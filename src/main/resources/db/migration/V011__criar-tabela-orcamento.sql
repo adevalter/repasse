@@ -1,0 +1,20 @@
+   CREATE TABLE `orcamento` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `aprovado_id` bigint unsigned DEFAULT NULL,
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `sexo` varchar(10) NOT NULL DEFAULT '',
+  `email` varchar(255) NOT NULL DEFAULT '',
+  `celular` varchar(255) NOT NULL DEFAULT '',
+  `chave` varchar(255) NOT NULL DEFAULT '',
+  `descricao` text NOT NULL DEFAULT '',
+  `status` int(11) NOT NULL DEFAULT '1',
+  `aprovado_em` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+   key `orcamento_user_id` (`user_id`),
+   key `orcamento_aprovado_id` (`aprovado_id`),
+   CONSTRAINT `orcamento_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+   CONSTRAINT `orcamento_aprovado_id` FOREIGN KEY (`aprovado_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8;

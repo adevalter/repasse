@@ -16,9 +16,10 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
      @Query("Select sum(ri.valor) From RepasseItem ri WHERE ri.repasse.id = :repasseId and ri.status = :status" )
     Double totalItens(@Param("repasseId") Long repasseId, @Param("status") int status);
      */
+    Page<Pagamento> findAllByStatusLessThanOrderByIdDesc(int status,Pageable pageable);
 
     @Query("Select new br.com.adeweb.repasse.data.models.RelatorioPagamentoDTO( " +
-            "p.bancoPagamento, p.dataDeposito, p.status, m.nome, m.email, ri.dataProcedimento, ri.valor, ri.id, " +
+            "p.bancoPagamento, p.dataDeposito, p.status, m.nome, m.email, ri.dataProcedimento, ri.valor, r.id, " +
             "pro.descricao, pa.nome, co.descricao) " +
             "from Pagamento p " +
             "inner join Repasse r on r.id = p.repasse.id " +
@@ -27,7 +28,7 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
             "inner join Procedimento pro on pro.id = ri.procedimento.id " +
             "inner join Pessoa pa on pa.id = ri.paciente.id " +
             "inner join Convenio co on co.id = pa.convenio.id " +
-            "where p.id = :pagamentoId")
+            "where p.id = :pagamentoId and ri.status = 1  order by ri.dataProcedimento asc")
     List<RelatorioPagamentoDTO> findByPagamentoId(@Param("pagamentoId") Long pagamentoId);
 
     @Query("Select p  " +

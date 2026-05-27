@@ -13,7 +13,7 @@ public interface RepasseRepository extends JpaRepository<Repasse, Long> {
             "from Repasse r inner join User u  on u.id = r.user.id " +
             "inner join Pessoa m on m.id = r.medico.id  "+
             "inner join Empresa e on e.id = r.empresa.id  "+
-            "where LOWER(m.nome) LIKE LOWER(CONCAT(:nome, '%')) and m.tipoPessoa.Id = :tipoPessoa_id")
+            "where LOWER(m.nome) LIKE LOWER(CONCAT(:nome, '%')) and m.tipoPessoa.Id = :tipoPessoa_id and r.status > 0")
     Page<Repasse> findByNome(String nome, Long tipoPessoa_id, Pageable pageable );
 
 }

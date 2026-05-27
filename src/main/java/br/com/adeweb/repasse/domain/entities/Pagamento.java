@@ -9,7 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-
+@Table(name="pagamento")
 @Data
 @Entity
 @AllArgsConstructor
@@ -20,7 +20,9 @@ public class Pagamento {
     private Long id;
 
     private Double total;
+    @Column(name="banco_pagamento")
     private String bancoPagamento;
+    @Column(name="data_deposito")
     private LocalDateTime dataDeposito;
     private int status;
 

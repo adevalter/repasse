@@ -1,14 +1,9 @@
 package br.com.adeweb.repasse.data.controllers;
 
-import br.com.adeweb.repasse.data.models.ConvenioDTO;
 import br.com.adeweb.repasse.data.models.PagamentoDTO;
-import br.com.adeweb.repasse.data.models.PessoaDTO;
-import br.com.adeweb.repasse.data.models.RepasseDTO;
-import br.com.adeweb.repasse.domain.entities.Pagamento;
 import br.com.adeweb.repasse.domain.services.PagamentoService;
 import br.com.adeweb.repasse.domain.services.PdfService;
 import br.com.adeweb.repasse.domain.services.RepasseService;
-import com.itextpdf.text.Document;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -75,10 +70,10 @@ public class PagamentoController {
     }
 
     @GetMapping("/download/{id}")
-    public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id,  @RequestParam boolean enviarEmail) {
         try {
             // Gera o PDF e obtém os dados como byte[]
-            byte[] pdfBytes = pdfService.sendEmailPagamento(id);
+            byte[] pdfBytes = pdfService.sendEmailPagamento(id,enviarEmail);
 
             // Retorna o PDF no corpo da resposta
             //Content-Disposition: attachment; filename="arquivo.pdf"

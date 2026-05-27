@@ -18,6 +18,6 @@ public interface PessoaRepositoy extends JpaRepository<Pessoa, Long> {
 
 
     @Query("Select p from Pessoa p left join Convenio c on c.id = p.convenio.id " +
-            " where LOWER(p.nome) LIKE LOWER(CONCAT(:nome, '%')) and p.tipoPessoa.Id = :tipoPessoa_id")
+            " where LOWER(p.nome) LIKE LOWER(CONCAT(:nome, '%')) and p.tipoPessoa.Id = :tipoPessoa_id and p.status = 1")
     Page<Pessoa> findByNome(String nome, Long tipoPessoa_id, Pageable pageable );
 }
