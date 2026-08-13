@@ -7,6 +7,8 @@ import br.com.adeweb.repasse.data.models.DespesaMedicoDTO;
 import br.com.adeweb.repasse.data.models.RelatorioPagamentoDTO;
 import br.com.adeweb.repasse.domain.entities.DespesaMedico;
 import br.com.adeweb.repasse.domain.entities.Orcamento;
+import br.com.adeweb.repasse.domain.entities.OrcamentoItem;
+import br.com.adeweb.repasse.domain.enums.SecaoOrcamentoItem;
 import br.com.adeweb.repasse.domain.repositories.DespesaMedicoRepository;
 import br.com.adeweb.repasse.domain.repositories.OrcamentoRepository;
 import br.com.adeweb.repasse.domain.repositories.PagamentoRepository;
@@ -19,10 +21,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -147,73 +152,474 @@ public class PdfService {
     }
 
     public byte[] enviarOrcamento(Long orcamentoId, boolean email) throws MessagingException {
-        Optional<Orcamento> orcamento = orcamentoRepository.findById(orcamentoId);
-        Orcamento o = orcamento.orElseThrow(() -> new RuntimeException("Orçamento não encontrado"));
+        Orcamento o = orcamentoRepository.findByIdWithItens(orcamentoId)
+                .orElseThrow(() -> new RuntimeException("Orçamento não encontrado"));
 
         var gerarPdf = this.gerarOrcamentoPdf(o);
-        if(email){
+        if (email) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             String dataFormatada = o.getCreatedAt().format(formatter);
-            emailService.sendHtmlEmailPdf(o.getEmail(),o.getNome(),"Orçamento",getCorpoEmailOrcamento(dataFormatada),"orçamento.pdf",gerarPdf);
+            emailService.sendHtmlEmailPdf(o.getEmail(), o.getNome(), "Orçamento", getCorpoEmailOrcamento(dataFormatada), "orçamento.pdf", gerarPdf);
         }
-        return  gerarPdf;
+        return gerarPdf;
     }
 
     public byte[] gerarOrcamentoPdf(Orcamento orcamento) {
+        boolean estruturado = orcamento.getTipo() != null
+                || (orcamento.getItens() != null && !orcamento.getItens().isEmpty());
 
+        if (estruturado) {
+            return gerarOrcamentoPdfEstruturado(orcamento);
+        }
+        return gerarOrcamentoPdfLegado(orcamento);
+    }
+
+    private byte[] gerarOrcamentoPdfEstruturado(Orcamento orcamento) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4, 30, 30, 80, 30);
+        // Layout compacto + margem superior maior (área não imprimível da impressora)
+        Document document = new Document(PageSize.A4, 24, 24, 88, 24);
 
         try {
-            String textoDoBanco = orcamento.getDescricao();
-
-            List<String> palavrasChave = Arrays.asList(
-                    "PROCEDIMENTO CIRÚRGICO:", "MÉDICO(A) RESPONSÁVEL:", "CIRURGIÃO:", "AUXILIAR:", "PEDIATRA:", "ANESTESISTA:","INSTRUMENTADOR:",
-                    "TOTAL EQUIPE MÉDICA: ","OBS:","DESPESAS HOSPITALARES", "MATERIAIS ESPECIAIS","ANATOMOPATOLÓGICO",
-                    "TOTAL:","TOTAL GERAL DO PROCEDIMENTO:","INCLUSO:","NÃO INCLUSO: ","OBSERVAÇÕES:",
-                    "COMPLICAÇÕES E INTERCORRÊNCIAS:", "ORÇAMENTO É VÁLIDO POR 30 DIAS.");
+            DecimalFormat df = new DecimalFormat("#,##0.00", new DecimalFormatSymbols(new Locale("pt", "BR")));
 
             PdfWriter writer = PdfWriter.getInstance(document, byteArrayOutputStream);
-            writer.setPageEvent(new HeaderFooterPageEvent("ORÇAMENTO MÉDICO HOSPITALAR","src/main/resources/static/logohcf.png"));
+            writer.setPageEvent(new HeaderFooterPageEvent(
+                    "ORÇAMENTO MÉDICO HOSPITALAR",
+                    "src/main/resources/static/logohcf.png",
+                    true));
             document.open();
 
+            BaseColor azulEscuro = new BaseColor(30, 60, 114);
+            BaseColor azulSuave = new BaseColor(241, 245, 249);
+            BaseColor cinzaBorda = new BaseColor(226, 232, 240);
+            BaseColor cinzaTexto = new BaseColor(51, 65, 85);
+            BaseColor destaqueTotal = new BaseColor(226, 232, 240);
+
+            Font tituloSecao = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, azulEscuro);
+            Font rotulo = new Font(Font.FontFamily.HELVETICA, 6.5f, Font.NORMAL, new BaseColor(100, 116, 139));
+            Font valorCampo = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, cinzaTexto);
+            Font textoNormal = new Font(Font.FontFamily.HELVETICA, 7f, Font.NORMAL, cinzaTexto);
+            Font textoNegrito = new Font(Font.FontFamily.HELVETICA, 7f, Font.BOLD, cinzaTexto);
+            Font textoTotal = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, azulEscuro);
+            Font textoPequeno = new Font(Font.FontFamily.HELVETICA, 6.5f, Font.NORMAL, cinzaTexto);
+
+            document.add(montarCabecalhoPacienteModerno(orcamento, rotulo, valorCampo, azulSuave, cinzaBorda));
+
+            PdfPTable infoProc = new PdfPTable(2);
+            infoProc.setWidthPercentage(100);
+            infoProc.setWidths(new float[]{1f, 1f});
+            infoProc.setSpacingBefore(3f);
+            infoProc.setSpacingAfter(3f);
+            infoProc.addCell(celulaCampoModerno("Procedimento cirúrgico", safe(orcamento.getProcedimentoCirurgico()), rotulo, valorCampo, cinzaBorda));
+            infoProc.addCell(celulaCampoModerno("Equipe médica", safe(orcamento.getEquipeMedica()), rotulo, valorCampo, cinzaBorda));
+            document.add(infoProc);
+
+            List<OrcamentoItem> itens = orcamento.getItens() != null ? orcamento.getItens() : List.of();
+            List<OrcamentoItem> equipe = filtrarSecao(itens, SecaoOrcamentoItem.EQUIPE);
+            List<OrcamentoItem> hospitalar = filtrarSecao(itens, SecaoOrcamentoItem.HOSPITALAR);
+            List<OrcamentoItem> material = filtrarSecao(itens, SecaoOrcamentoItem.MATERIAL);
+
+            BigDecimal totalEquipe = BigDecimal.ZERO;
+            BigDecimal totalHospitalar = BigDecimal.ZERO;
+            BigDecimal totalMaterial = BigDecimal.ZERO;
+
+            if (!equipe.isEmpty()) {
+                document.add(tituloSecaoBarra("Equipe médica", tituloSecao, azulSuave));
+                PdfPTable tabelaEquipe = criarTabelaItens();
+                for (OrcamentoItem item : equipe) {
+                    BigDecimal valor = valorItem(item);
+                    totalEquipe = totalEquipe.add(valor);
+                    adicionarLinhaItem(tabelaEquipe, item.getDescricao(), formatarMoeda(df, valor), textoNormal, textoNegrito, cinzaBorda);
+                }
+                adicionarLinhaTotal(tabelaEquipe, "Total equipe", "R$ " + formatarMoeda(df, totalEquipe), textoTotal, destaqueTotal);
+                document.add(tabelaEquipe);
+            }
+
+            if (orcamento.getObsPagamento() != null && !orcamento.getObsPagamento().isBlank()) {
+                PdfPTable aviso = blocoAviso("Condições de pagamento", orcamento.getObsPagamento(), tituloSecao, textoNormal, azulSuave, cinzaBorda);
+                aviso.setSpacingBefore(2f);
+                aviso.setSpacingAfter(2f);
+                document.add(aviso);
+            }
+
+            if (!hospitalar.isEmpty()) {
+                document.add(tituloSecaoBarra("Despesas hospitalares", tituloSecao, azulSuave));
+                PdfPTable tabelaHosp = criarTabelaItens();
+                for (OrcamentoItem item : hospitalar) {
+                    BigDecimal valor = valorItem(item);
+                    totalHospitalar = totalHospitalar.add(valor);
+                    adicionarLinhaItem(tabelaHosp, item.getDescricao(), "R$ " + formatarMoeda(df, valor), textoNormal, textoNegrito, cinzaBorda);
+                }
+                adicionarLinhaTotal(tabelaHosp, "Total hospitalar", "R$ " + formatarMoeda(df, totalHospitalar), textoTotal, destaqueTotal);
+                document.add(tabelaHosp);
+            }
+
+            if (!material.isEmpty()) {
+                document.add(tituloSecaoBarra("Materiais especiais", tituloSecao, azulSuave));
+                PdfPTable tabelaMat = criarTabelaItens();
+                for (OrcamentoItem item : material) {
+                    BigDecimal valor = valorItem(item);
+                    totalMaterial = totalMaterial.add(valor);
+                    adicionarLinhaItem(tabelaMat, item.getDescricao(), "R$ " + formatarMoeda(df, valor), textoNormal, textoNegrito, cinzaBorda);
+                }
+                adicionarLinhaTotal(tabelaMat, "Total materiais", "R$ " + formatarMoeda(df, totalMaterial), textoTotal, destaqueTotal);
+                document.add(tabelaMat);
+            }
+
+            BigDecimal totalGeral = totalEquipe.add(totalHospitalar).add(totalMaterial);
+
+            PdfPTable condicoes = blocoAviso(
+                    "Condições de pagamento",
+                    OrcamentoTextos.CONDICOES_PAGAMENTO,
+                    tituloSecao,
+                    textoNormal,
+                    azulSuave,
+                    cinzaBorda);
+            condicoes.setSpacingBefore(3f);
+            condicoes.setSpacingAfter(2f);
+            document.add(condicoes);
+
+            PdfPTable totalBox = blocoTotalGeral("Total geral", "R$ " + formatarMoeda(df, totalGeral), textoTotal, azulEscuro);
+            totalBox.setSpacingBefore(2f);
+            totalBox.setSpacingAfter(2f);
+            document.add(totalBox);
+
+            document.add(gradeTextosOrcamento(
+                    orcamento.getIncluso(),
+                    orcamento.getNaoIncluso(),
+                    orcamento.getComplicacoes(),
+                    orcamento.getObservacoes(),
+                    tituloSecao,
+                    textoNormal,
+                    textoNegrito,
+                    cinzaBorda));
+
+            document.add(montarAssinaturaModerna(orcamento, textoNegrito, textoNormal, textoPequeno, cinzaBorda, azulSuave));
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            document.close();
+        }
+
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    private Paragraph espaco(float altura) {
+        Paragraph p = new Paragraph(" ");
+        p.setLeading(altura);
+        return p;
+    }
+
+    private PdfPTable montarCabecalhoPacienteModerno(Orcamento orcamento, Font rotulo, Font valor,
+                                                    BaseColor fundo, BaseColor borda) throws DocumentException {
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.6f, 0.5f, 1.5f, 1f});
+        table.setSpacingBefore(0f);
+        table.setSpacingAfter(0f);
+
+        table.addCell(celulaCampoModerno("Paciente", safe(orcamento.getNome()), rotulo, valor, borda, fundo));
+        table.addCell(celulaCampoModerno("Sexo", safe(orcamento.getSexo()), rotulo, valor, borda, fundo));
+        table.addCell(celulaCampoModerno("E-mail", safe(orcamento.getEmail()), rotulo, valor, borda, fundo));
+        table.addCell(celulaCampoModerno("Celular", safe(orcamento.getCelular()), rotulo, valor, borda, fundo));
+        return table;
+    }
+
+    private PdfPCell celulaCampoModerno(String label, String value, Font rotulo, Font valorCampo, BaseColor borda) {
+        return celulaCampoModerno(label, value, rotulo, valorCampo, borda, BaseColor.WHITE);
+    }
+
+    private PdfPCell celulaCampoModerno(String label, String value, Font rotulo, Font valorCampo,
+                                        BaseColor borda, BaseColor fundo) {
+        Paragraph p = new Paragraph();
+        p.setLeading(8f);
+        p.add(new Chunk(label.toUpperCase() + "\n", rotulo));
+        p.add(new Chunk(value.isBlank() ? "—" : value, valorCampo));
+        PdfPCell cell = new PdfPCell(p);
+        cell.setPadding(3.5f);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.6f);
+        cell.setBackgroundColor(fundo);
+        return cell;
+    }
+
+    private PdfPTable tituloSecaoBarra(String titulo, Font fonte, BaseColor fundo) {
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(2f);
+        table.setSpacingAfter(0.5f);
+        PdfPCell cell = new PdfPCell(new Phrase(titulo.toUpperCase(), fonte));
+        cell.setPadding(3f);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setBackgroundColor(fundo);
+        table.addCell(cell);
+        return table;
+    }
+
+    private PdfPTable criarTabelaItens() throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{3.2f, 1f});
+        table.setSpacingAfter(1f);
+        return table;
+    }
+
+    private void adicionarLinhaItem(PdfPTable table, String descricao, String valor,
+                                    Font fonteDesc, Font fonteValor, BaseColor borda) {
+        PdfPCell cDesc = new PdfPCell(new Phrase(descricao != null ? descricao : "", fonteDesc));
+        cDesc.setPadding(3f);
+        cDesc.setBorderColor(borda);
+        cDesc.setBorderWidth(0.5f);
+
+        PdfPCell cValor = new PdfPCell(new Phrase(valor, fonteValor));
+        cValor.setPadding(3f);
+        cValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cValor.setBorderColor(borda);
+        cValor.setBorderWidth(0.5f);
+
+        table.addCell(cDesc);
+        table.addCell(cValor);
+    }
+
+    private void adicionarLinhaTotal(PdfPTable table, String label, String valor,
+                                     Font fonte, BaseColor fundo) {
+        PdfPCell cLabel = new PdfPCell(new Phrase(label, fonte));
+        cLabel.setPadding(3.5f);
+        cLabel.setBorder(Rectangle.NO_BORDER);
+        cLabel.setBackgroundColor(fundo);
+
+        PdfPCell cValor = new PdfPCell(new Phrase(valor, fonte));
+        cValor.setPadding(3.5f);
+        cValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cValor.setBorder(Rectangle.NO_BORDER);
+        cValor.setBackgroundColor(fundo);
+
+        table.addCell(cLabel);
+        table.addCell(cValor);
+    }
+
+    private PdfPTable blocoTotalGeral(String label, String valor, Font fonte, BaseColor cor) {
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        Phrase frase = new Phrase();
+        frase.add(new Chunk(label + "  ", new Font(Font.FontFamily.HELVETICA, 7.5f, Font.NORMAL, BaseColor.WHITE)));
+        frase.add(new Chunk(valor, new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE)));
+        PdfPCell cell = new PdfPCell(frase);
+        cell.setPadding(5f);
+        cell.setBackgroundColor(cor);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.addCell(cell);
+        return table;
+    }
+
+    private PdfPTable blocoAviso(String titulo, String texto, Font tituloFont, Font textoFont,
+                                 BaseColor fundo, BaseColor borda) {
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        Paragraph p = new Paragraph();
+        p.setLeading(8.5f);
+        p.add(new Chunk(titulo.toUpperCase() + "  ", tituloFont));
+        p.add(new Chunk(texto, textoFont));
+        PdfPCell cell = new PdfPCell(p);
+        cell.setPadding(3.5f);
+        cell.setBackgroundColor(fundo);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.6f);
+        table.addCell(cell);
+        return table;
+    }
+
+    private PdfPTable gradeTextosOrcamento(String incluso, String naoIncluso, String complicacoes,
+                                          String observacoes, Font tituloFont, Font textoFont,
+                                          Font textoNegrito, BaseColor borda) throws DocumentException {
+        PdfPTable grade = new PdfPTable(2);
+        grade.setWidthPercentage(100);
+        grade.setWidths(new float[]{1f, 1f});
+        grade.setSpacingBefore(1f);
+        grade.setSpacingAfter(2f);
+
+        grade.addCell(celulaTextoGrade("Incluso", incluso, tituloFont, textoFont, borda));
+        grade.addCell(celulaTextoGrade("Não incluso", naoIncluso, tituloFont, textoFont, borda));
+        grade.addCell(celulaTextoGrade("Complicações e intercorrências", complicacoes, tituloFont, textoFont, borda));
+        grade.addCell(celulaObservacoes("Observações", observacoes, tituloFont, textoFont, textoNegrito, borda));
+        return grade;
+    }
+
+    private PdfPCell celulaTextoGrade(String titulo, String texto, Font tituloFont, Font textoFont, BaseColor borda) {
+        Paragraph tituloP = new Paragraph(titulo.toUpperCase(), tituloFont);
+        tituloP.setLeading(8.2f);
+        tituloP.setAlignment(Element.ALIGN_LEFT);
+        tituloP.setSpacingAfter(1.5f);
+
+        Paragraph corpo = new Paragraph();
+        corpo.setLeading(8.2f);
+        corpo.setAlignment(Element.ALIGN_JUSTIFIED);
+        if (texto != null && !texto.isBlank()) {
+            corpo.add(new Chunk(texto.trim().replace("\n", " "), textoFont));
+        } else {
+            corpo.add(new Chunk("—", textoFont));
+        }
+
+        PdfPCell cell = new PdfPCell();
+        cell.addElement(tituloP);
+        cell.addElement(corpo);
+        cell.setPadding(4f);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.5f);
+        cell.setBorderWidthLeft(2f);
+        cell.setBorderColorLeft(new BaseColor(30, 60, 114));
+        cell.setVerticalAlignment(Element.ALIGN_TOP);
+        return cell;
+    }
+
+    /** Observações: horário de visitas em negrito e em linha própria. */
+    private PdfPCell celulaObservacoes(String titulo, String texto, Font tituloFont, Font textoFont,
+                                       Font textoNegrito, BaseColor borda) {
+        Paragraph p = new Paragraph();
+        p.setLeading(8.2f);
+        p.add(new Chunk(titulo.toUpperCase() + "\n", tituloFont));
+
+        if (texto != null && !texto.isBlank()) {
+            String[] linhas = texto.trim().replace("\r\n", "\n").split("\n");
+            for (int i = 0; i < linhas.length; i++) {
+                String linha = linhas[i].trim();
+                if (linha.isEmpty()) {
+                    continue;
+                }
+                boolean horario = linha.toUpperCase().contains("HORÁRIO")
+                        || linha.toUpperCase().contains("HORARIO")
+                        || linha.toUpperCase().contains("VISITA");
+                // Se veio tudo numa linha, separa o trecho de horário
+                if (!horario && i == 0 && linhas.length == 1) {
+                    int idx = indexOfIgnoreCase(linha, "HORÁRIO");
+                    if (idx < 0) {
+                        idx = indexOfIgnoreCase(linha, "HORARIO");
+                    }
+                    if (idx > 0) {
+                        String antes = linha.substring(0, idx).trim().replaceAll("[.\\s]+$", "");
+                        String depois = linha.substring(idx).trim();
+                        if (!antes.isEmpty()) {
+                            p.add(new Chunk(antes + "\n", textoFont));
+                        }
+                        p.add(new Chunk(depois, textoNegrito));
+                        continue;
+                    }
+                }
+                Font fonteLinha = horario ? textoNegrito : textoFont;
+                p.add(new Chunk(linha + (i < linhas.length - 1 ? "\n" : ""), fonteLinha));
+            }
+        } else {
+            p.add(new Chunk("—", textoFont));
+        }
+
+        PdfPCell cell = new PdfPCell(p);
+        cell.setPadding(4f);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.5f);
+        cell.setBorderWidthLeft(2f);
+        cell.setBorderColorLeft(new BaseColor(30, 60, 114));
+        cell.setVerticalAlignment(Element.ALIGN_TOP);
+        return cell;
+    }
+
+    private int indexOfIgnoreCase(String texto, String busca) {
+        return texto.toUpperCase().indexOf(busca.toUpperCase());
+    }
+
+    private PdfPTable blocoTextoModerno(String titulo, String texto, Font tituloFont, Font textoFont, BaseColor borda) {
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(2f);
+        table.setSpacingAfter(0f);
+        Paragraph p = new Paragraph();
+        p.setLeading(9f);
+        p.add(new Chunk(titulo.toUpperCase() + "  ", tituloFont));
+        if (texto != null && !texto.isBlank()) {
+            p.add(new Chunk(texto.trim().replace("\n", " "), textoFont));
+        } else {
+            p.add(new Chunk("—", textoFont));
+        }
+        PdfPCell cell = new PdfPCell(p);
+        cell.setPadding(4f);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.5f);
+        cell.setBorderWidthLeft(2.5f);
+        cell.setBorderColorLeft(new BaseColor(30, 60, 114));
+        table.addCell(cell);
+        return table;
+    }
+
+    private Paragraph paragrafoSimples(String texto, Font fonte) {
+        Paragraph p = new Paragraph(texto, fonte);
+        p.setLeading(8f);
+        p.setSpacingBefore(0f);
+        return p;
+    }
+
+    private PdfPTable montarAssinaturaModerna(Orcamento orcamento, Font negrito, Font normal, Font pequeno,
+                                              BaseColor borda, BaseColor fundo) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String dataFormatada = orcamento.getCreatedAt() != null ? orcamento.getCreatedAt().format(formatter) : "";
+
+        Paragraph p = new Paragraph();
+        p.setLeading(8.5f);
+        p.add(new Chunk("Válido por 30 dias.  ", negrito));
+        p.add(new Chunk("Responsável: ", negrito));
+        p.add(new Chunk("TATIANA DOS SANTOS   ", normal));
+        p.add(new Chunk("Data: " + dataFormatada, normal));
+
+        if (orcamento.getStatus() == 2 && orcamento.getAprovadoEm() != null) {
+            p.add(new Chunk("   |   Aprovado em: " + orcamento.getAprovadoEm().format(formatter), normal));
+        }
+        if (orcamento.getChave() != null && !orcamento.getChave().isBlank()) {
+            p.add(new Chunk("   |   Código: " + orcamento.getChave(), pequeno));
+        }
+
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(2f);
+        PdfPCell cell = new PdfPCell(p);
+        cell.setPadding(4f);
+        cell.setBackgroundColor(fundo);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.6f);
+        table.addCell(cell);
+        return table;
+    }
+
+    private byte[] gerarOrcamentoPdfLegado(Orcamento orcamento) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 30, 30, 100, 30);
+
+        try {
+            String textoDoBanco = orcamento.getDescricao() != null ? orcamento.getDescricao() : "";
+
+            List<String> palavrasChave = new ArrayList<>(Arrays.asList(
+                    "PROCEDIMENTO CIRÚRGICO:", "MÉDICO(A) RESPONSÁVEL:", "CIRURGIÃO:", "AUXILIAR:", "PEDIATRA:", "ANESTESISTA:", "INSTRUMENTADOR:",
+                    "TOTAL EQUIPE MÉDICA: ", "OBS:", "DESPESAS HOSPITALARES", "MATERIAIS ESPECIAIS", "ANATOMOPATOLÓGICO",
+                    "TOTAL:", "TOTAL GERAL DO PROCEDIMENTO:", "INCLUSO:", "NÃO INCLUSO: ", "OBSERVAÇÕES:",
+                    "COMPLICAÇÕES E INTERCORRÊNCIAS:", "ORÇAMENTO É VÁLIDO POR 30 DIAS."));
+
+            PdfWriter writer = PdfWriter.getInstance(document, byteArrayOutputStream);
+            writer.setPageEvent(new HeaderFooterPageEvent("ORÇAMENTO MÉDICO HOSPITALAR", "src/main/resources/static/logohcf.png"));
+            document.open();
             document.add(new Paragraph("\n"));
 
             Font headerFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
             Font fonteNormal = new Font(Font.FontFamily.HELVETICA, 11);
             Font fonteNegrito = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
             Font fonteTotalGeral = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-            Font fonteMenor = new Font(Font.FontFamily.HELVETICA, 8,Font.BOLD);
+            Font fonteMenor = new Font(Font.FontFamily.HELVETICA, 8, Font.BOLD);
 
-            // Tabela com dados do cliente
-            PdfPTable tableDadosCliente = new PdfPTable(2);
-            tableDadosCliente.setWidths(new float[]{1.5f, 1f});
-            tableDadosCliente.setWidthPercentage(100);
+            document.add(montarTabelaPaciente(orcamento, headerFont));
 
-
-            PdfPCell cellNome = new PdfPCell(new Phrase(String.format("NOME PACIENTE:  %s", orcamento.getNome().toUpperCase()), headerFont));
-            tableDadosCliente.addCell(cellNome);
-
-            PdfPCell cellSexo = new PdfPCell(new Phrase(String.format("SEXO:  %s", orcamento.getSexo().toUpperCase()), headerFont));
-            tableDadosCliente.addCell(cellSexo);
-
-            PdfPCell cellEmail = new PdfPCell(new Phrase(String.format("E-MAIL:  %s", orcamento.getEmail().toUpperCase()), headerFont));
-            tableDadosCliente.addCell(cellEmail);
-
-            PdfPCell cellCelular = new PdfPCell(new Phrase(String.format("CELULAR:  %s", orcamento.getCelular().toUpperCase()), headerFont));
-            tableDadosCliente.addCell(cellCelular);
-
-            document.add(tableDadosCliente);
-
-
-            // Cria tabela principal com 1 coluna (conteúdo + observação + assinatura)
             PdfPTable table = new PdfPTable(1);
             table.setWidthPercentage(100);
             table.setSplitLate(false);
 
-            // Monta parágrafo com negrito para palavras-chave
             Paragraph paragrafoComNegrito = new Paragraph();
-            paragrafoComNegrito.setLeading(12f); // ajuste aqui!
+            paragrafoComNegrito.setLeading(12f);
 
             palavrasChave.sort((a, b) -> Integer.compare(b.length(), a.length()));
 
@@ -223,16 +629,13 @@ public class PdfService {
                 if (linha.toUpperCase().contains("TOTAL GERAL DO PROCEDIMENTO:")) {
                     paragrafoComNegrito.add(new Chunk(linha, fonteTotalGeral));
                     paragrafoComNegrito.add(Chunk.NEWLINE);
-
                     continue;
                 }
 
                 for (String palavraChave : palavrasChave) {
                     int index = linha.indexOf(palavraChave);
                     if (index != -1) {
-                        Chunk chunkNegrito = new Chunk(palavraChave, fonteNegrito);
-                        paragrafoComNegrito.add(chunkNegrito);
-
+                        paragrafoComNegrito.add(new Chunk(palavraChave, fonteNegrito));
                         String restante = linha.substring(index + palavraChave.length()).trim();
                         paragrafoComNegrito.add(new Chunk(" " + restante, fonteNormal));
                         paragrafoComNegrito.add(Chunk.NEWLINE);
@@ -246,33 +649,13 @@ public class PdfService {
                     paragrafoComNegrito.add(Chunk.NEWLINE);
                 }
             }
-            // Célula com o texto principal
+
             PdfPCell cellTextoPrincipal = new PdfPCell();
             cellTextoPrincipal.addElement(paragrafoComNegrito);
             cellTextoPrincipal.setBorder(Rectangle.BOX);
             table.addCell(cellTextoPrincipal);
-
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            String dataFormatada = orcamento.getCreatedAt().format(formatter);
-
-            Phrase frase = new Phrase();
-            frase.add(new Chunk("RESPONSÁVEL PELO ORÇAMENTO: ", fonteNegrito));
-            frase.add(new Chunk("TATIANA DOS SANTOS \n", fonteNormal));
-            frase.add(new Chunk("DATA: " + dataFormatada + "\n", fonteNegrito));
-
-
-            if(orcamento.getStatus() == 2){
-                String dataAprovadoFormatada = orcamento.getAprovadoEm().format(formatter);
-                frase.add(new Chunk("\nAPROVADO EM: ", fonteNegrito));
-                frase.add(new Chunk(dataAprovadoFormatada + "\n", fonteNormal));
-            }
-            frase.add(new Chunk(orcamento.getChave(), fonteMenor ));
-
-            PdfPCell cellAssinatura = new PdfPCell(frase);
-            cellAssinatura.setPadding(12f);
-            table.addCell(cellAssinatura);
+            table.addCell(montarCelulaAssinatura(orcamento, fonteNegrito, fonteNormal, fonteMenor));
             document.add(table);
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -282,159 +665,250 @@ public class PdfService {
         return byteArrayOutputStream.toByteArray();
     }
 
+    private PdfPTable montarTabelaPaciente(Orcamento orcamento, Font headerFont) throws DocumentException {
+        PdfPTable tableDadosCliente = new PdfPTable(2);
+        tableDadosCliente.setWidths(new float[]{1.5f, 1f});
+        tableDadosCliente.setWidthPercentage(100);
+
+        tableDadosCliente.addCell(new PdfPCell(new Phrase(String.format("NOME PACIENTE:  %s", safe(orcamento.getNome()).toUpperCase()), headerFont)));
+        tableDadosCliente.addCell(new PdfPCell(new Phrase(String.format("SEXO:  %s", safe(orcamento.getSexo()).toUpperCase()), headerFont)));
+        tableDadosCliente.addCell(new PdfPCell(new Phrase(String.format("E-MAIL:  %s", safe(orcamento.getEmail()).toUpperCase()), headerFont)));
+        tableDadosCliente.addCell(new PdfPCell(new Phrase(String.format("CELULAR:  %s", safe(orcamento.getCelular()).toUpperCase()), headerFont)));
+        return tableDadosCliente;
+    }
+
+    private PdfPCell montarCelulaAssinatura(Orcamento orcamento, Font fonteNegrito, Font fonteNormal, Font fonteMenor) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String dataFormatada = orcamento.getCreatedAt() != null ? orcamento.getCreatedAt().format(formatter) : "";
+
+        Phrase frase = new Phrase();
+        frase.add(new Chunk("RESPONSÁVEL PELO ORÇAMENTO: ", fonteNegrito));
+        frase.add(new Chunk("TATIANA DOS SANTOS \n", fonteNormal));
+        frase.add(new Chunk("DATA: " + dataFormatada + "\n", fonteNegrito));
+
+        if (orcamento.getStatus() == 2 && orcamento.getAprovadoEm() != null) {
+            String dataAprovadoFormatada = orcamento.getAprovadoEm().format(formatter);
+            frase.add(new Chunk("\nAPROVADO EM: ", fonteNegrito));
+            frase.add(new Chunk(dataAprovadoFormatada + "\n", fonteNormal));
+        }
+        if (orcamento.getChave() != null) {
+            frase.add(new Chunk(orcamento.getChave(), fonteMenor));
+        }
+
+        PdfPCell cellAssinatura = new PdfPCell(frase);
+        cellAssinatura.setPadding(12f);
+        return cellAssinatura;
+    }
+
+    private void adicionarLinhaRotulo(Paragraph paragrafo, String rotulo, String valor, Font fonteNegrito, Font fonteNormal) {
+        paragrafo.add(new Chunk(rotulo, fonteNegrito));
+        paragrafo.add(new Chunk(" " + valor, fonteNormal));
+        paragrafo.add(Chunk.NEWLINE);
+    }
+
+    private void adicionarBlocoTexto(Paragraph paragrafo, String rotulo, String texto, Font fonteNegrito, Font fonteNormal) {
+        paragrafo.add(new Chunk(rotulo, fonteNegrito));
+        paragrafo.add(Chunk.NEWLINE);
+        if (texto != null && !texto.isBlank()) {
+            for (String linha : texto.split("\n")) {
+                paragrafo.add(new Chunk(linha, fonteNormal));
+                paragrafo.add(Chunk.NEWLINE);
+            }
+        }
+    }
+
+    private List<OrcamentoItem> filtrarSecao(List<OrcamentoItem> itens, SecaoOrcamentoItem secao) {
+        return itens.stream()
+                .filter(i -> i.getSecao() == secao)
+                .sorted(Comparator.comparingInt(OrcamentoItem::getOrdem).thenComparing(OrcamentoItem::getId, Comparator.nullsLast(Long::compareTo)))
+                .toList();
+    }
+
+    private BigDecimal valorItem(OrcamentoItem item) {
+        return item.getValor() != null ? item.getValor() : BigDecimal.ZERO;
+    }
+
+    private String formatarMoeda(DecimalFormat df, BigDecimal valor) {
+        return df.format(valor);
+    }
+
+    private String safe(String value) {
+        return value != null ? value : "";
+    }
+
 
     public byte[] gerarPdf(Long pagamentoId) {
-        PdfPTable table;
-        double total =0;
-
-        int currentRowCount = 0;
-
-        int pageNumber;
-        long idRepasse =0;
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4,30, 30, 85, 30);
+        Document document = new Document(PageSize.A4, 24, 24, 88, 24);
+
         try {
             DecimalFormat df = new DecimalFormat("#,##0.00", new DecimalFormatSymbols(new Locale("pt", "BR")));
             List<RelatorioPagamentoDTO> pagamentos = pagamentoRepository.findByPagamentoId(pagamentoId);
-            idRepasse = pagamentos.getFirst().getRepasseId();
-            this.emailMedico = pagamentos.getFirst().getEmail();
+            RelatorioPagamentoDTO primeiro = pagamentos.getFirst();
+            long idRepasse = primeiro.getRepasseId();
+            this.emailMedico = primeiro.getEmail();
 
-            PdfWriter writer =  PdfWriter.getInstance(document, byteArrayOutputStream);
-            writer.setPageEvent(new HeaderFooterPageEvent("FORMULÁRIO DE REPASSE TERCEIRO","src/main/resources/static/logohcf.png"));
-
-
-
-            // document.setPageSize(PageSize.A4.rotate());
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL);
-            Font cellFontConvenio = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
-            Font cellFontTotal = new Font(Font.FontFamily.HELVETICA,9,Font.BOLD);
-
-
-            PdfPTable tableMedico = new PdfPTable(3);
+            PdfWriter writer = PdfWriter.getInstance(document, byteArrayOutputStream);
+            writer.setPageEvent(new HeaderFooterPageEvent(
+                    "DEMONSTRATIVO DE PAGAMENTO",
+                    "src/main/resources/static/logohcf.png",
+                    true));
             document.open();
-            //  document.add(new Paragraph("\n"));
-            tableMedico.setWidthPercentage(100);
 
-            // Permite quebra correta mesmo com linha alta/múltiplas linhas
-            tableMedico.setSplitRows(true);
-            tableMedico.setSplitLate(false);
-            float[] columnWidthsMedico = {3f, 2f, 2f};
+            BaseColor azulEscuro = new BaseColor(30, 60, 114);
+            BaseColor azulSuave = new BaseColor(241, 245, 249);
+            BaseColor cinzaBorda = new BaseColor(226, 232, 240);
+            BaseColor cinzaTexto = new BaseColor(51, 65, 85);
+            BaseColor destaqueTotal = new BaseColor(226, 232, 240);
+            BaseColor zebra = new BaseColor(248, 250, 252);
 
+            Font tituloSecao = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, azulEscuro);
+            Font rotulo = new Font(Font.FontFamily.HELVETICA, 6.5f, Font.NORMAL, new BaseColor(100, 116, 139));
+            Font valorCampo = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, cinzaTexto);
+            Font textoNormal = new Font(Font.FontFamily.HELVETICA, 7f, Font.NORMAL, cinzaTexto);
+            Font textoNegrito = new Font(Font.FontFamily.HELVETICA, 7f, Font.BOLD, cinzaTexto);
+            Font textoCabecalho = new Font(Font.FontFamily.HELVETICA, 7f, Font.BOLD, azulEscuro);
+            Font textoTotal = new Font(Font.FontFamily.HELVETICA, 7.5f, Font.BOLD, azulEscuro);
 
-            tableMedico.setWidths(columnWidthsMedico);
-            tableMedico.setWidthPercentage(100); // Tabela ocupa 100% da largura da página
-            tableMedico.addCell(new PdfPCell(new Phrase("MÉDICO", headerFont)));
-            tableMedico.addCell(new PdfPCell(new Phrase("BANCO", headerFont)));
-            tableMedico.addCell(new PdfPCell(new Phrase("DATA DEPÓSITO", headerFont)));
-            tableMedico.addCell(new PdfPCell(new Phrase(pagamentos.getFirst().getMedico().toUpperCase(), cellFont)));
+            document.add(montarCabecalhoRepasse(primeiro, rotulo, valorCampo, azulSuave, cinzaBorda));
+            document.add(tituloSecaoBarra("Procedimentos", tituloSecao, azulSuave));
 
-            if(pagamentos.getFirst().getBancoPagamento() != null) {
-                tableMedico.addCell(new PdfPCell(new Phrase(pagamentos.getFirst().getBancoPagamento().toUpperCase(), cellFont)));
-                tableMedico.addCell(new PdfPCell(new Phrase(UtilStrings.formartaDataBr(pagamentos.getFirst().getDataDeposito().toString()), cellFont)));
-            }else{
-                tableMedico.addCell(new PdfPCell(new Phrase("", cellFont)));
-                tableMedico.addCell(new PdfPCell(new Phrase("", cellFont)));
-            }
+            PdfPTable table = criarTabelaProcedimentos();
+            adicionarCabecalhoProcedimentos(table, textoCabecalho, azulSuave, cinzaBorda);
 
-            document.add(tableMedico);
-            document.add(new Paragraph("\n"));
-            document.add(new Paragraph("\n"));
+            double total = 0;
+            int rowIndex = 0;
 
-            table = new PdfPTable(5);
-            float[] columnWidths = {90, 350, 140, 260, 90};
-            table.setWidths(columnWidths);
-            table.setWidthPercentage(100); // Tabela ocupa 100% da largura da página
-            table.setSpacingBefore(0f);    // Sem espaçamento antes
-            table.setSpacingAfter(0f);     // Sem espaçamento depois
-
-
-            // Cabeçalhos
-            tituloTabelaMedico(table, headerFont);
-
-
-            for(RelatorioPagamentoDTO p : pagamentos)
-            {
-
-                if (writer.getVerticalPosition(true) < 120) {
-
-                    // encerra a tabela atual na página antiga
+            for (RelatorioPagamentoDTO p : pagamentos) {
+                if (writer.getVerticalPosition(true) < 110) {
                     document.add(table);
-
-                    // cria nova página
                     document.newPage();
-
-                    // distância do topo para não sobrescrever o cabeçalho do PageEvent
-                    tableMedico.setSpacingBefore(0f);
-                    document.add(tableMedico);
-                    document.add(new Paragraph("\n"));
-
-                    // cria nova tabela
-                    table = new PdfPTable(5);
-                    table.setWidths(columnWidths);
-                    table.setWidthPercentage(100);
-                 //   table.setSpacingBefore(0f);
-
-                    // recria os títulos da tabela
-                    tituloTabelaMedico(table, headerFont);
-
-                    currentRowCount = 0;
+                    document.add(montarCabecalhoRepasse(primeiro, rotulo, valorCampo, azulSuave, cinzaBorda));
+                    document.add(tituloSecaoBarra("Procedimentos (continuação)", tituloSecao, azulSuave));
+                    table = criarTabelaProcedimentos();
+                    adicionarCabecalhoProcedimentos(table, textoCabecalho, azulSuave, cinzaBorda);
+                    rowIndex = 0;
                 }
-                String valorFormatado = df.format(p.getValorProcedimento());
 
-                table.addCell(new PdfPCell(new Phrase(UtilStrings.formartaDataBr(p.getDataProcedimento().toString()), cellFont)));
-                table.addCell(new PdfPCell(new Phrase(p.getPaciente().toUpperCase(), cellFont)));
-                table.addCell(new PdfPCell(new Phrase(p.getConvenio().toUpperCase(), cellFontConvenio)));
-                table.addCell(new PdfPCell(new Phrase(p.getProcedimento().toUpperCase(), cellFont)));
-                table.addCell(new PdfPCell(new Phrase(valorFormatado, cellFont))).setHorizontalAlignment(Element.ALIGN_RIGHT);
+                BaseColor fundoLinha = (rowIndex % 2 == 0) ? BaseColor.WHITE : zebra;
+                adicionarLinhaProcedimento(table, p, df, textoNormal, textoNegrito, cinzaBorda, fundoLinha);
                 total += p.getValorProcedimento();
-                currentRowCount++;
-
+                rowIndex++;
             }
 
-
-            // Linha de total
-            PdfPCell totalCell = new PdfPCell(new Phrase("TOTAL",cellFont));
-            totalCell.setColspan(4); // Mesclar as 4 primeiras colunas
-
-            totalCell.setHorizontalAlignment(Element.ALIGN_RIGHT); // Alinhar à direita
-            table.addCell(totalCell);
             long valorArredondado = Math.round(total);
-            PdfPCell totalValueCell = new PdfPCell(new Phrase(df.format(valorArredondado),cellFontTotal));
-            totalValueCell.setHorizontalAlignment(Element.ALIGN_RIGHT); // Alinhar o valor à direita
-            table.addCell(totalValueCell);
-
-;
-            document.add(table );
+            adicionarLinhaTotalProcedimentos(table, "Total bruto", "R$ " + df.format(valorArredondado),
+                    textoTotal, destaqueTotal);
+            document.add(table);
 
             List<DespesaMedico> despesas = despesaMedicoRepository.findByRepasseId(idRepasse);
-
             if (despesas != null && !despesas.isEmpty()) {
-
-                gerarTabelaDespesas(document, writer, despesas, df,valorArredondado);
+                gerarResumoDespesasModerno(document, despesas, df, valorArredondado,
+                        tituloSecao, textoNormal, textoNegrito, textoTotal,
+                        azulEscuro, azulSuave, cinzaBorda, destaqueTotal);
+            } else {
+                PdfPTable totalBox = blocoTotalGeral("Total", "R$ " + df.format(valorArredondado), textoTotal, azulEscuro);
+                totalBox.setSpacingBefore(6f);
+                document.add(totalBox);
             }
-
-        }catch (DocumentException e) {
+        } catch (DocumentException e) {
             e.printStackTrace();
         } finally {
-            document.close();
+            if (document.isOpen()) {
+                document.close();
+            }
         }
 
-        document.close();
-
         return byteArrayOutputStream.toByteArray();
-        // Adiciona os usuários ao PDF
-
-
-
     }
 
-    private static void tituloTabelaMedico(PdfPTable table, Font headerFont) {
-        table.addCell(new PdfPCell(new Phrase("Data", headerFont)));
-        table.addCell(new PdfPCell(new Phrase("Paciente", headerFont)));
-        table.addCell(new PdfPCell(new Phrase("Convênio", headerFont)));
-        table.addCell(new PdfPCell(new Phrase("Procedimento", headerFont)));
-        table.addCell(new PdfPCell(new Phrase("Valor", headerFont)));
+    private PdfPTable montarCabecalhoRepasse(RelatorioPagamentoDTO pagamento, Font rotulo, Font valor,
+                                             BaseColor fundo, BaseColor borda) throws DocumentException {
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{2f, 1.4f, 1.2f});
+        table.setSpacingBefore(0f);
+        table.setSpacingAfter(4f);
+
+        String banco = pagamento.getBancoPagamento() != null ? pagamento.getBancoPagamento() : "";
+        String dataDeposito = "";
+        if (pagamento.getDataDeposito() != null) {
+            dataDeposito = UtilStrings.formartaDataBr(pagamento.getDataDeposito().toString());
+        }
+
+        table.addCell(celulaCampoModerno("Médico", safe(pagamento.getMedico()), rotulo, valor, borda, fundo));
+        table.addCell(celulaCampoModerno("Banco", banco, rotulo, valor, borda, fundo));
+        table.addCell(celulaCampoModerno("Data depósito", dataDeposito, rotulo, valor, borda, fundo));
+        return table;
+    }
+
+    private PdfPTable criarTabelaProcedimentos() throws DocumentException {
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{0.85f, 2.2f, 1.3f, 2.2f, 0.9f});
+        table.setSpacingBefore(0f);
+        table.setSpacingAfter(2f);
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        return table;
+    }
+
+    private void adicionarCabecalhoProcedimentos(PdfPTable table, Font fonte, BaseColor fundo, BaseColor borda) {
+        String[] titulos = {"Data", "Paciente", "Convênio", "Procedimento", "Valor"};
+        for (int i = 0; i < titulos.length; i++) {
+            PdfPCell cell = new PdfPCell(new Phrase(titulos[i].toUpperCase(), fonte));
+            cell.setPadding(4f);
+            cell.setBackgroundColor(fundo);
+            cell.setBorderColor(borda);
+            cell.setBorderWidth(0.5f);
+            if (i == titulos.length - 1) {
+                cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            }
+            table.addCell(cell);
+        }
+    }
+
+    private void adicionarLinhaProcedimento(PdfPTable table, RelatorioPagamentoDTO p, DecimalFormat df,
+                                            Font texto, Font textoValor, BaseColor borda, BaseColor fundo) {
+        String data = p.getDataProcedimento() != null
+                ? UtilStrings.formartaDataBr(p.getDataProcedimento().toString())
+                : "—";
+
+        table.addCell(celulaTextoTabela(data, texto, borda, fundo, Element.ALIGN_LEFT));
+        table.addCell(celulaTextoTabela(safe(p.getPaciente()).toUpperCase(), texto, borda, fundo, Element.ALIGN_LEFT));
+        table.addCell(celulaTextoTabela(safe(p.getConvenio()).toUpperCase(), texto, borda, fundo, Element.ALIGN_LEFT));
+        table.addCell(celulaTextoTabela(safe(p.getProcedimento()).toUpperCase(), texto, borda, fundo, Element.ALIGN_LEFT));
+        table.addCell(celulaTextoTabela(df.format(p.getValorProcedimento()), textoValor, borda, fundo, Element.ALIGN_RIGHT));
+    }
+
+    private PdfPCell celulaTextoTabela(String texto, Font fonte, BaseColor borda, BaseColor fundo, int alinhamento) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto != null ? texto : "", fonte));
+        cell.setPadding(3.5f);
+        cell.setBorderColor(borda);
+        cell.setBorderWidth(0.5f);
+        cell.setBackgroundColor(fundo);
+        cell.setHorizontalAlignment(alinhamento);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        return cell;
+    }
+
+    private void adicionarLinhaTotalProcedimentos(PdfPTable table, String label, String valor,
+                                                  Font fonte, BaseColor fundo) {
+        PdfPCell cLabel = new PdfPCell(new Phrase(label, fonte));
+        cLabel.setColspan(4);
+        cLabel.setPadding(5f);
+        cLabel.setBorder(Rectangle.NO_BORDER);
+        cLabel.setBackgroundColor(fundo);
+        cLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        PdfPCell cValor = new PdfPCell(new Phrase(valor, fonte));
+        cValor.setPadding(5f);
+        cValor.setBorder(Rectangle.NO_BORDER);
+        cValor.setBackgroundColor(fundo);
+        cValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        table.addCell(cLabel);
+        table.addCell(cValor);
     }
 
     private static String getCorpoEmailOrcamento(String data) {
@@ -448,94 +922,95 @@ public class PdfService {
                     <img src="cid:logoImage" alt="Logo da Empresa" style="width:200px;"/>
             </body>
             </html>
-            """ , data);
+            """, data);
     }
 
-    private void gerarTabelaDespesas(Document document,
-                                     PdfWriter writer,
-                                     List<DespesaMedico> despesas,
-                                     DecimalFormat df,
-                                     double totalCredito) throws DocumentException {
+    private void gerarResumoDespesasModerno(Document document,
+                                            List<DespesaMedico> despesas,
+                                            DecimalFormat df,
+                                            double totalCredito,
+                                            Font tituloSecao,
+                                            Font textoNormal,
+                                            Font textoNegrito,
+                                            Font textoTotal,
+                                            BaseColor azulEscuro,
+                                            BaseColor azulSuave,
+                                            BaseColor cinzaBorda,
+                                            BaseColor destaqueTotal) throws DocumentException {
 
-        if (despesas == null || despesas.isEmpty()) {
-            return;
-        }
+        document.add(tituloSecaoBarra("Despesas", tituloSecao, azulSuave));
 
-        // ===== TÍTULO DESPESAS =====
-
+        PdfPTable tabelaDespesas = new PdfPTable(2);
+        tabelaDespesas.setWidthPercentage(100);
+        tabelaDespesas.setWidths(new float[]{3.2f, 1f});
+        tabelaDespesas.setSpacingAfter(4f);
 
         double totalDespesas = 0;
-
-        String descricaoDespesa = "";
-
-
         for (DespesaMedico d : despesas) {
-
             totalDespesas += d.getValor();
-            descricaoDespesa = d.getDescricao();
+            adicionarLinhaItem(
+                    tabelaDespesas,
+                    safe(d.getDescricao()).toUpperCase(),
+                    "R$ " + df.format(d.getValor()),
+                    textoNormal,
+                    textoNegrito,
+                    cinzaBorda);
         }
+        adicionarLinhaTotal(tabelaDespesas, "Total despesas", "R$ " + df.format(totalDespesas),
+                textoTotal, destaqueTotal);
+        document.add(tabelaDespesas);
 
-        // CALCULA TOTAL LÍQUIDO
         double totalFinal = totalCredito - totalDespesas;
-
-        // ===== TABELA DE TOTAL FINAL =====
-//        document.add(new Paragraph("\nTOTAL LÍQUIDO",
-//                new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD)));
-        // ===== TABELA VALOR A RECEBER =====
-        document.add(new Paragraph("\n"));
 
         PdfPTable resumo = new PdfPTable(2);
         resumo.setWidthPercentage(100);
-        resumo.setWidths(new float[]{4f, 2f});
+        resumo.setWidths(new float[]{3.2f, 1f});
+        resumo.setSpacingBefore(2f);
 
-// Fontes
-        Font tituloFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-        Font labelFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD);
-        Font valueFont = new Font(Font.FontFamily.HELVETICA, 10, Font.NORMAL);
-        Font totalFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD);
+        PdfPCell[] bruto = celulaResumo("Valor total bruto", "R$ " + df.format(totalCredito),
+                textoNormal, textoNegrito, cinzaBorda, BaseColor.WHITE);
+        resumo.addCell(bruto[0]);
+        resumo.addCell(bruto[1]);
 
-// ===== TÍTULO =====
-        PdfPCell titulo = new PdfPCell(new Phrase("VALOR A RECEBER", tituloFont));
-        titulo.setColspan(2);
-        titulo.setHorizontalAlignment(Element.ALIGN_CENTER);
-        titulo.setPadding(6);
-        titulo.setBorder(Rectangle.BOX);
-        resumo.addCell(titulo);
+        PdfPCell[] desp = celulaResumo("Total despesas", "R$ " + df.format(totalDespesas),
+                textoNormal, textoNegrito, cinzaBorda, azulSuave);
+        resumo.addCell(desp[0]);
+        resumo.addCell(desp[1]);
 
-// ===== LINHA: VALOR TOTAL BRUTO =====
-        PdfPCell brutoLabel = new PdfPCell(new Phrase("VALOR TOTAL BRUTO", labelFont));
-        brutoLabel.setPadding(5);
-        resumo.addCell(brutoLabel);
+        PdfPCell labelLiquido = new PdfPCell(new Phrase("Valor a receber",
+                new Font(Font.FontFamily.HELVETICA, 8, Font.BOLD, BaseColor.WHITE)));
+        labelLiquido.setPadding(6f);
+        labelLiquido.setBorder(Rectangle.NO_BORDER);
+        labelLiquido.setBackgroundColor(azulEscuro);
 
-        PdfPCell brutoValor = new PdfPCell(new Phrase("R$ " + df.format(totalCredito), valueFont));
-        brutoValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        brutoValor.setPadding(5);
-        resumo.addCell(brutoValor);
+        PdfPCell valorLiquido = new PdfPCell(new Phrase("R$ " + df.format(totalFinal),
+                new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE)));
+        valorLiquido.setPadding(6f);
+        valorLiquido.setBorder(Rectangle.NO_BORDER);
+        valorLiquido.setBackgroundColor(azulEscuro);
+        valorLiquido.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
-// ===== LINHA: VALOR TOTAL DESPESAS =====
-        PdfPCell despLabel = new PdfPCell(new Phrase(descricaoDespesa.toUpperCase(), labelFont));
-        despLabel.setPadding(5);
-        resumo.addCell(despLabel);
-
-        PdfPCell despValor = new PdfPCell(new Phrase("R$ " + df.format(totalDespesas), valueFont));
-        despValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        despValor.setPadding(5);
-        resumo.addCell(despValor);
-
-// ===== LINHA FINAL: VALOR A RECEBER =====
-        PdfPCell totalLabel = new PdfPCell(new Phrase("VALOR A RECEBER", totalFont));
-        totalLabel.setPadding(6);
-        totalLabel.setBorderWidthTop(2f);
-        resumo.addCell(totalLabel);
-
-        PdfPCell totalValor = new PdfPCell(new Phrase("R$ " + df.format(totalFinal), totalFont));
-        totalValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        totalValor.setPadding(6);
-        totalValor.setBorderWidthTop(2f);
-        resumo.addCell(totalValor);
-
+        resumo.addCell(labelLiquido);
+        resumo.addCell(valorLiquido);
         document.add(resumo);
+    }
 
+    private PdfPCell[] celulaResumo(String label, String valor, Font fonteLabel, Font fonteValor,
+                                    BaseColor borda, BaseColor fundo) {
+        PdfPCell cLabel = new PdfPCell(new Phrase(label, fonteLabel));
+        cLabel.setPadding(4f);
+        cLabel.setBorderColor(borda);
+        cLabel.setBorderWidth(0.5f);
+        cLabel.setBackgroundColor(fundo);
+
+        PdfPCell cValor = new PdfPCell(new Phrase(valor, fonteValor));
+        cValor.setPadding(4f);
+        cValor.setBorderColor(borda);
+        cValor.setBorderWidth(0.5f);
+        cValor.setBackgroundColor(fundo);
+        cValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        return new PdfPCell[]{cLabel, cValor};
     }
 }
 
